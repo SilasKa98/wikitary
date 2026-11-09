@@ -1,5 +1,10 @@
 {
   "title": "The Bread Wiki",
+  "planets": {
+    "Breads": { "civ": "vektor" },
+    "Science": { "civ": "ignis" },
+    "History and culture": { "civ": "kronos" }
+  },
   "expeditions": [
     {
       "title": "From flour to crust",

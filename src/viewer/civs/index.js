@@ -9,5 +9,12 @@ import auris from './auris.js';
 import thalassa from './thalassa.js';
 import kronos from './kronos.js';
 import sylva from './sylva.js';
+import nimbus from './nimbus.js';
+import selene from './selene.js';
+import lanterna from './lanterna.js';
+import apis from './apis.js';
+import lithos from './lithos.js';
+import fulmen from './fulmen.js';
+import palus from './palus.js';
 
-export const CIVS = { terra, vektor, ignis, prisma, myzel, auris, thalassa, kronos, sylva };
+export const CIVS = { terra, vektor, ignis, prisma, myzel, auris, thalassa, kronos, sylva, nimbus, selene, lanterna, apis, lithos, fulmen, palus };

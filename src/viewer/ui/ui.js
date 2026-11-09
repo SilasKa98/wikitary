@@ -9,6 +9,8 @@ import { PlanetMap } from './planetmap.js';
 import { Journey, ShipLog } from './journey.js';
 import { Signposts } from './signs.js';
 import { Reader, lightReadSections } from './reader.js';
+import { QUALITY_LEVELS } from '../engine/world.js';
+import { storedQuality, storeQuality } from '../engine/quality.js';
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _c = new THREE.Vector3();
 const _inv = new THREE.Matrix4();
@@ -619,6 +621,21 @@ class UI {
           el('dl', { class: 'legend' }, t.legend.flatMap(([a, b]) => [el('dt', { text: a }), el('dd', { text: b })])),
           el('h3', { text: t.keysTitle }),
           el('div', { class: 'keys' }, t.keys.flatMap(([a, b]) => [el('kbd', { text: a }), el('span', { text: b })])),
+          el('h3', { text: t.graphicsTitle }),
+          el('div', { class: 'quality', role: 'group', 'aria-label': t.graphicsTitle }, ['auto', ...QUALITY_LEVELS.slice().reverse()].map((level) =>
+            el('button', {
+              type: 'button',
+              'aria-pressed': String(level === storedQuality()),
+              text: t.graphicsLevels[level],
+              onclick: () => {
+                storeQuality(level);
+                // A level in the address would outrank the choice just made.
+                const url = new URL(location.href);
+                url.searchParams.delete('q');
+                location.replace(url);
+              },
+            }))),
+          el('p', { class: 'quality-note', text: t.graphicsNote(t.graphicsLevels[this.world.qualityName]) }),
         )));
     this.helpOverlay = overlay;
     this.root.append(overlay);

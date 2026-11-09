@@ -184,6 +184,11 @@ function consolidate(groups, weights, minSize, maxCount) {
   return groups;
 }
 
+/** One world per civilisation: beyond this, worlds would have to share one. */
+export const MAX_PLANETS = 16;
+/** How many worlds a wiki gets when nothing but its links and words shape them. */
+const AUTO_PLANETS = 9;
+
 const TYPE_FOLDERS = /^(concepts?|entit(y|ies)|people|persons?|sources?|summar(y|ies)|notes?|topics?|articles?|pages?|wiki|docs?|misc|general|references?|glossary|syntheses|synthesis|analyses|analysis|queries|comparisons?|konzepte?|entitäten|personen|quellen|themen|seiten|notizen|begriffe)$/i;
 
 export function analyseFolders(pages) {
@@ -300,7 +305,9 @@ export function clusterPages(pages, edges, options = {}) {
   }
 
   // Topic-named folders count as a strong prior.
-  if (mode === 'auto' && folderInfo.meaningful && folderInfo.coverage > 0.5) {
+  const folderPrior = mode === 'auto' && folderInfo.meaningful && folderInfo.coverage > 0.5;
+  const folderSizes = [];
+  if (folderPrior) {
     const buckets = new Map();
     pages.forEach((p, i) => {
       if (!p.path.includes('/')) return;
@@ -310,6 +317,7 @@ export function clusterPages(pages, edges, options = {}) {
       buckets.get(key).push(i);
     });
     for (const ids of buckets.values()) {
+      folderSizes.push(ids.length);
       const w = 6 / Math.sqrt(ids.length);
       for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) addWeight(ids[i], ids[j], w);
     }
@@ -318,19 +326,26 @@ export function clusterPages(pages, edges, options = {}) {
   const flat = [];
   weightMap.forEach((m, a) => { for (const [b, w] of m) if (a < b) flat.push([a, b, w]); });
 
-  const target = count || Math.max(n < 8 ? 2 : 3, Math.min(9, Math.round(Math.sqrt(n) * 0.82)));
-  const minSize = n < 4 ? 1 : Math.max(2, Math.min(5, Math.round(n / 13)));
+  // A wiki without topic folders gets a modest number of worlds. One whose author sorted it
+  // into topic folders gets one world per folder, up to the number of civilisations.
+  const wanted = count ? Math.min(count, MAX_PLANETS) : null;
+  const folderCount = Math.min(folderSizes.length, MAX_PLANETS);
+  const cap = wanted || Math.max(AUTO_PLANETS, folderCount);
+  const target = wanted || Math.max(n < 8 ? 2 : 3, Math.min(AUTO_PLANETS, Math.round(Math.sqrt(n) * 0.82)), folderCount);
+  let minSize = n < 4 ? 1 : Math.max(2, Math.min(5, Math.round(n / 13)));
+  // A small folder is still a topic its author chose; it must not be swallowed for its size.
+  if (folderCount > AUTO_PLANETS) minSize = Math.max(2, Math.min(minSize, ...folderSizes));
 
   // Search for the resolution whose result is closest to the target planet count.
   let best = null;
   for (let gamma = 0.3; gamma <= 3.2; gamma += 0.15) {
-    const groups = consolidate(groupsOf(louvain(n, flat, gamma, 1337)), weightMap, minSize, 9);
+    const groups = consolidate(groupsOf(louvain(n, flat, gamma, 1337)), weightMap, minSize, cap);
     const sizes = groups.map((g) => g.length);
     const balance = Math.max(...sizes) / n;
     const score = Math.abs(groups.length - target) + balance * 1.5;
     if (!best || score < best.score - 1e-9) best = { score, groups, gamma };
   }
-  const final = consolidate(best.groups, weightMap, minSize, count || 9);
+  const final = consolidate(best.groups, weightMap, minSize, cap);
   return finish(final, folderInfo.meaningful && mode === 'auto' ? 'graph+folders' : 'graph', nameFromKeywords, true);
 }
 

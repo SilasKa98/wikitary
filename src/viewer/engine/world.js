@@ -18,6 +18,21 @@ const QUALITY = {
   medium: { detail: 0.75, terrain: 150, terrainPerR: 7, shadow: 2048, samples: 2, bloom: true, maxDpr: 1.5, cityRange: 26, vertices: 5e6 },
   high: { detail: 1, terrain: 200, terrainPerR: 9.5, shadow: 3072, samples: 4, bloom: true, maxDpr: 2, cityRange: 50, vertices: 8e6 },
 };
+export const QUALITY_LEVELS = Object.keys(QUALITY);
+
+/**
+ * When frames run slow, the load comes off in this order: first what the eye barely misses,
+ * resolution last, because a blurred picture is what makes a weak machine look weak.
+ * Geometry is never touched; it was sized for the machine when the worlds were built.
+ */
+const RELIEF = [
+  'bloom', // glow computed at a quarter of the resolution instead of half: it is a blur anyway
+  'msaa', // no multisampling; at high pixel density edges stay smooth without it
+  'range', // distant cities fade out sooner
+  'shadow', // no cast shadows
+  'dpr', // only now: fewer pixels
+  'dpr',
+];
 
 export class World extends EventTarget {
   constructor(canvas, graph, { quality = 'high' } = {}) {
@@ -46,6 +61,8 @@ export class World extends EventTarget {
     this.frameInfo = { cityRange: this.quality.cityRange, pixelScale: 1 };
     this.fps = 60;
     this.dprScale = 1;
+    this.relief = 0;
+    this.reliefFloor = 0;
   }
 
   async init(onProgress = () => {}) {
@@ -144,8 +161,9 @@ export class World extends EventTarget {
     await tick();
     this.setupPipeline();
     this.bindInput();
-    this.resize();
-    window.addEventListener('resize', () => this.resize());
+    // Also on resize: moving the window to another display changes its pixel density.
+    this.applyRelief();
+    window.addEventListener('resize', () => this.applyRelief());
 
     // Warm up every shader before the first frame the user sees.
     const lodBackup = this.planets.map((p) => [p.terrainHi.visible, p.detailMesh.visible, p.traffic.group.visible]);
@@ -351,6 +369,11 @@ export class World extends EventTarget {
   setupPipeline() {
     const { renderer, scene, camera, quality } = this;
     const pipeline = createPipeline(renderer, scene, camera, { samples: quality.samples, bloom: quality.bloom });
+    // Below the top level the glow starts at a quarter resolution: it is a blur, nobody sees the difference.
+    const bloom = pipeline.bloom;
+    const bloomSize = bloom.setSize.bind(bloom);
+    this.bloomScale = this.qualityName === 'high' ? 1 : 0.5;
+    bloom.setSize = (w, h) => bloomSize(Math.max(2, w * this.bloomScale), Math.max(2, h * this.bloomScale));
     this.composer = pipeline.composer;
     this.bloom = pipeline.bloom;
     this.bloomBase = pipeline.bloom?.strength ?? 0;
@@ -366,6 +389,7 @@ export class World extends EventTarget {
     this.res.set(w, h);
     this.finish.uniforms.uAspect.value = w / h;
     const dpr = this.renderer.getPixelRatio();
+    this.finish.uniforms.uTexel.value.set(1 / Math.max(1, w * dpr), 1 / Math.max(1, h * dpr));
     this.frameInfo.pixelScale = (h * dpr) / 1000;
     this.stars.material.uniforms.uPixel.value = dpr;
     this.applyViewOffset();
@@ -888,7 +912,7 @@ export class World extends EventTarget {
         cam.left = -extent; cam.right = extent; cam.top = extent; cam.bottom = -extent;
         cam.updateProjectionMatrix();
       }
-      this.dirLight.castShadow = !!this.quality.shadow && nearAlt < 1.4;
+      this.dirLight.castShadow = !!this.quality.shadow && !this.reliefHas('shadow') && nearAlt < 1.4;
     } else {
       this.dirLight.castShadow = false;
     }
@@ -993,22 +1017,61 @@ export class World extends EventTarget {
     this.onPortrait?.(planet, out.toDataURL('image/jpeg', 0.86));
   }
 
-  /** Keeps things smooth on weaker GPUs by lowering internal resolution, never geometry. */
+  reliefHas(kind) { return RELIEF.slice(0, this.relief).includes(kind); }
+
+  /** Keeps things smooth on weaker GPUs, one step of RELIEF at a time, and gives it back when there is headroom. */
   adaptQuality(dt) {
     this.fps += (1 / Math.max(dt, 0.001) - this.fps) * 0.03;
     this.qualityTimer = (this.qualityTimer || 0) + dt;
-    if (this.qualityTimer < 2.5 || this.rig.busy || this.paused) return;
-    const base = Math.min(window.devicePixelRatio || 1, this.quality.maxDpr);
-    let scale = this.dprScale;
-    if (this.fps < 28 && scale > 0.5) scale = Math.max(0.5, scale * 0.82);
-    else if (this.fps > 56 && scale < 1) scale = Math.min(1, scale * 1.08);
-    if (Math.abs(scale - this.dprScale) > 0.01) {
-      this.dprScale = scale;
-      this.renderer.setPixelRatio(base * scale);
-      this.composer.setPixelRatio(base * scale);
-      this.resize();
-      this.qualityTimer = 0;
+    if (this.qualityTimer < 3 || this.rig.busy || this.paused) return;
+    const fps = this.fps;
+    // Two steps in a row that bought nothing: it is not the GPU holding the frame rate back
+    // (a refresh rate capped to save power, a busy CPU). Take them back and leave it there.
+    if (this.reliefCheck) {
+      const helped = fps > this.reliefCheck * 1.04;
+      this.reliefCheck = 0;
+      this.idleSteps = helped ? 0 : (this.idleSteps || 0) + 1;
+      if (this.idleSteps >= 2) {
+        this.reliefCeiling = Math.max(this.reliefFloor, this.relief - 2);
+        this.setRelief(this.reliefCeiling);
+        return;
+      }
     }
+    const ceiling = this.reliefCeiling ?? RELIEF.length;
+    if (fps < 40 && this.relief < ceiling) {
+      // Needed again soon after it was given back: keep this step from now on.
+      if (this.gaveBackAt != null && this.time - this.gaveBackAt < 12) this.reliefFloor = this.relief + 1;
+      this.reliefCheck = fps;
+      this.setRelief(this.relief + 1);
+    } else if (fps > 57 && this.relief > this.reliefFloor && this.qualityTimer > 8) {
+      this.gaveBackAt = this.time;
+      this.setRelief(this.relief - 1);
+    }
+  }
+
+  setRelief(level) {
+    this.relief = level;
+    this.qualityTimer = 0;
+    this.applyRelief();
+  }
+
+  applyRelief() {
+    const q = this.quality;
+    this.bloomScale = this.qualityName === 'high' && !this.reliefHas('bloom') ? 1 : 0.5;
+    const dprSteps = RELIEF.slice(0, this.relief).filter((k) => k === 'dpr').length;
+    this.dprScale = [1, 0.8, 0.67][dprSteps];
+    const native = window.devicePixelRatio || 1;
+    const ratio = Math.min(native, q.maxDpr) * this.dprScale;
+    // Multisampling is the costliest effect by far, and on a dense display hardly visible.
+    const samples = this.reliefHas('msaa') || (this.qualityName !== 'high' && ratio >= 1.5) ? 0 : q.samples;
+    for (const target of [this.composer.renderTarget1, this.composer.renderTarget2]) {
+      if (target.samples !== samples) { target.samples = samples; target.dispose(); }
+    }
+    this.frameInfo.cityRange = q.cityRange * (this.reliefHas('range') ? 0.6 : 1);
+    this.finish.uniforms.uSharpen.value = Math.min(0.6, Math.max(0, native / ratio - 1) * 1.2);
+    this.renderer.setPixelRatio(ratio);
+    this.composer.setPixelRatio(ratio);
+    this.resize();
   }
 }
 

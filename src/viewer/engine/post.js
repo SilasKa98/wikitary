@@ -17,6 +17,8 @@ const FinishShader = {
     uFade: { value: 1 },
     uFlash: { value: 0 },
     uFlashColor: { value: new THREE.Color(1, 1, 1) },
+    uSharpen: { value: 0 },
+    uTexel: { value: new THREE.Vector2(1, 1) },
   },
   vertexShader: /* glsl */`
     varying vec2 vUv;
@@ -25,7 +27,8 @@ const FinishShader = {
     precision highp float;
     varying vec2 vUv;
     uniform sampler2D tDiffuse;
-    uniform float uWarp, uTime, uSunVis, uAspect, uFade, uFlash;
+    uniform float uWarp, uTime, uSunVis, uAspect, uFade, uFlash, uSharpen;
+    uniform vec2 uTexel;
     uniform vec2 uSunUv;
     uniform vec3 uFlashColor;
     float grain(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -47,6 +50,17 @@ const FinishShader = {
       } else {
         float ca = r2 * 0.0035;
         col = vec3(texture2D(tDiffuse, vUv + c * ca).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - c * ca).b);
+        // Drawn below the screen's resolution, the picture gets back some crispness: an unsharp
+        // mask held within the neighbours' range, so edges sharpen without halos.
+        if (uSharpen > 0.0) {
+          vec3 n = texture2D(tDiffuse, vUv + vec2(0.0, uTexel.y)).rgb;
+          vec3 s = texture2D(tDiffuse, vUv - vec2(0.0, uTexel.y)).rgb;
+          vec3 e = texture2D(tDiffuse, vUv + vec2(uTexel.x, 0.0)).rgb;
+          vec3 w = texture2D(tDiffuse, vUv - vec2(uTexel.x, 0.0)).rgb;
+          vec3 lo = min(col, min(min(n, s), min(e, w)));
+          vec3 hi = max(col, max(max(n, s), max(e, w)));
+          col = clamp(col + (col - (n + s + e + w) * 0.25) * uSharpen, lo, hi);
+        }
       }
       if (uSunVis > 0.003) {
         vec2 axis = vec2(0.5) - uSunUv;

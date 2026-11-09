@@ -198,6 +198,52 @@ function glyphPath(ctx, kind, x, y, r) {
       ctx.quadraticCurveTo(x - r * 1.5, y - r * 0.2, x, y - r * 1.45);
       break;
     }
+    case 'cloud': {
+      ctx.arc(x - r * 0.62, y + r * 0.22, r * 0.62, Math.PI * 0.5, Math.PI * 1.5);
+      ctx.arc(x - r * 0.1, y - r * 0.3, r * 0.72, Math.PI * 1.05, Math.PI * 1.85);
+      ctx.arc(x + r * 0.62, y + r * 0.12, r * 0.72, Math.PI * 1.4, Math.PI * 0.5);
+      ctx.closePath();
+      break;
+    }
+    case 'dome': {
+      ctx.moveTo(x - r * 1.2, y + r * 0.62);
+      ctx.arc(x, y + r * 0.62, r * 1.2, Math.PI, 0);
+      ctx.closePath();
+      break;
+    }
+    case 'lantern': {
+      ctx.moveTo(x - r * 0.42, y - r * 1.25); ctx.lineTo(x + r * 0.42, y - r * 1.25);
+      ctx.quadraticCurveTo(x + r * 1.35, y, x + r * 0.42, y + r * 1.25);
+      ctx.lineTo(x - r * 0.42, y + r * 1.25);
+      ctx.quadraticCurveTo(x - r * 1.35, y, x - r * 0.42, y - r * 1.25);
+      ctx.closePath();
+      break;
+    }
+    case 'hex': {
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        ctx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r * 1.15, y + Math.sin(a) * r * 1.15);
+      }
+      ctx.closePath();
+      break;
+    }
+    case 'obelisk': {
+      ctx.moveTo(x, y - r * 1.6); ctx.lineTo(x + r * 0.62, y - r * 0.95); ctx.lineTo(x + r * 0.78, y + r * 1.1);
+      ctx.lineTo(x - r * 0.78, y + r * 1.1); ctx.lineTo(x - r * 0.62, y - r * 0.95); ctx.closePath();
+      break;
+    }
+    case 'bolt': {
+      const pts = [[0.25, -1.45], [-0.85, 0.18], [-0.1, 0.18], [-0.35, 1.45], [0.85, -0.25], [0.1, -0.25]];
+      pts.forEach(([px, py], i) => ctx[i ? 'lineTo' : 'moveTo'](x + px * r, y + py * r));
+      ctx.closePath();
+      break;
+    }
+    case 'flask': {
+      ctx.moveTo(x - r * 0.3, y - r * 1.35); ctx.lineTo(x + r * 0.3, y - r * 1.35); ctx.lineTo(x + r * 0.3, y - r * 0.55);
+      ctx.lineTo(x + r * 1.1, y + r * 1.1); ctx.lineTo(x - r * 1.1, y + r * 1.1); ctx.lineTo(x - r * 0.3, y - r * 0.55);
+      ctx.closePath();
+      break;
+    }
     default:
       ctx.arc(x, y, r, 0, Math.PI * 2);
   }
@@ -285,6 +331,36 @@ function strokeRoad(ctx, style, trace, width, emphasis) {
     case 'rail':
       ctx.strokeStyle = style.road; ctx.lineWidth = Math.max(1, w * 0.55); trace(); ctx.stroke();
       ctx.lineCap = 'butt'; ctx.lineWidth = w + 3.4; ctx.setLineDash([1.3, 5.5]); ctx.stroke();
+      break;
+    case 'tether':
+      ctx.strokeStyle = style.road; ctx.lineWidth = Math.max(0.8, w * 0.4); trace(); ctx.stroke();
+      ctx.lineWidth = Math.max(2.2, w * 1.3); ctx.setLineDash([0.1, Math.max(7, w * 5)]); ctx.stroke();
+      break;
+    case 'tube':
+      ctx.strokeStyle = style.casing; ctx.lineWidth = w + 2.6; trace(); ctx.stroke();
+      ctx.strokeStyle = style.paper; ctx.lineWidth = Math.max(0.8, w * 0.75); ctx.stroke();
+      ctx.strokeStyle = style.road; ctx.lineWidth = Math.max(0.6, w * 0.25); ctx.setLineDash([5, 4]); ctx.stroke();
+      break;
+    case 'lantern':
+      ctx.strokeStyle = style.casing; ctx.lineWidth = Math.max(1, w * 0.6); trace(); ctx.stroke();
+      ctx.strokeStyle = style.road; ctx.lineWidth = Math.max(2.6, w * 1.6); ctx.setLineDash([0.1, Math.max(9, w * 6)]); ctx.stroke();
+      break;
+    case 'honey':
+      ctx.strokeStyle = style.casing; ctx.lineWidth = w + 2; trace(); ctx.stroke();
+      ctx.strokeStyle = style.road; ctx.lineWidth = Math.max(1, w * 0.85); ctx.setLineDash([4, 2.5]); ctx.stroke();
+      break;
+    case 'causeway':
+      ctx.lineCap = 'butt'; ctx.strokeStyle = style.casing; ctx.lineWidth = w + 3; trace(); ctx.stroke();
+      ctx.strokeStyle = style.road; ctx.lineWidth = w + 1; ctx.stroke();
+      ctx.strokeStyle = style.casing; ctx.lineWidth = 1; ctx.setLineDash([2, 6]); ctx.stroke();
+      break;
+    case 'storm':
+      ctx.strokeStyle = style.road; ctx.globalAlpha *= 0.2; ctx.lineWidth = w + 3.4; trace(); ctx.stroke();
+      ctx.globalAlpha = emphasis < 1 ? 0.28 : 1; ctx.lineWidth = Math.max(0.8, w * 0.5); ctx.setLineDash([9, 2, 2, 2]); ctx.stroke();
+      break;
+    case 'brew':
+      ctx.strokeStyle = style.casing; ctx.lineWidth = w + 2.2; trace(); ctx.stroke();
+      ctx.strokeStyle = style.road; ctx.lineWidth = Math.max(0.9, w * 0.7); ctx.setLineDash([2, 3]); ctx.stroke();
       break;
     case 'vine':
     default:

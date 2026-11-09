@@ -1,6 +1,7 @@
 import './ui/style.css';
 import { World } from './engine/world.js';
 import { createUI } from './ui/ui.js';
+import { autoQuality, storedQuality } from './engine/quality.js';
 
 async function loadGraph() {
   const inline = document.getElementById('wikitary-data');
@@ -33,7 +34,8 @@ async function main() {
     return;
   }
   ui.setGraph(graph);
-  const world = new World(document.getElementById('scene'), graph, { quality: params.get('q') || autoQuality() });
+  const chosen = params.get('q') || storedQuality();
+  const world = new World(document.getElementById('scene'), graph, { quality: chosen === 'auto' ? autoQuality() : chosen });
   try {
     await world.init((progress, label) => ui.progress(progress, label));
   } catch (e) {
@@ -51,14 +53,6 @@ async function main() {
       events.addEventListener('graph', () => ui.notifyChanged());
     } catch { /* live reload is a nicety */ }
   }
-}
-
-function autoQuality() {
-  const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-  if (mobile) return 'low';
-  const memory = navigator.deviceMemory || 8;
-  const cores = navigator.hardwareConcurrency || 8;
-  return memory <= 4 || cores <= 4 ? 'medium' : 'high';
 }
 
 main();

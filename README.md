@@ -96,7 +96,7 @@ These also work with the German labels, such as `**Zusammenfassung**`, `**Quelle
 
 ## The civilisations
 
-![All nine civilisations](docs/worlds.jpg)
+![All sixteen civilisations](docs/worlds.jpg)
 
 | | Planet | People | Links travel by |
 | --- | --- | --- | --- |
@@ -109,6 +109,13 @@ These also work with the German labels, such as `**Zusammenfassung**`, `**Quelle
 | `thalassa` | Ocean and coral atolls | The Pearlkeepers | sea-lanes and manta craft |
 | `kronos` | Copper, brass and gears | The Clockmakers | brass rails and zeppelins |
 | `sylva` | Soft green forest | The Treefolk | vine bridges and seed gliders |
+| `nimbus` | Pastel sea of clouds | The Skyfarers | wind tethers and balloon ferries |
+| `selene` | Airless cratered moon | The Stargazers | maglev tubes and lander hops |
+| `lanterna` | Eternal dusk, indigo hills | The Lamplighters | lantern roads and sky lanterns |
+| `apis` | Honey-amber basalt hexagons | The Hive | comb lanes and pollen haulers |
+| `lithos` | Limestone mesas and ruins | The Heirs | stone causeways and rune barges |
+| `fulmen` | Slate cliffs under thunderheads | The Stormcallers | storm lines and arc skiffs |
+| `palus` | Misty swamp with glowing pools | The Alchemists | plank walks and bubble skiffs |
 
 All geometry and every texture is generated in code: there are no assets to download, and each wiki gets its own terrain, layout and night sky.
 
@@ -169,7 +176,7 @@ Following a link in the reader flies you to the page, across space if it lives o
 
 1. A `planet:` or `cluster:` field in the frontmatter of at least 70% of pages wins outright.
 2. Otherwise a weighted Louvain clustering combines links (damped for hub pages), text similarity (TF-IDF), the headings of your index page, and folders.
-3. Folders count only if they name topics (`physics/`, `music/`). Folders named after page types (`concepts/`, `entities/`, `sources/`) say nothing about the topic, so they are ignored.
+3. Folders count only if they name topics (`physics/`, `music/`). Folders named after page types (`concepts/`, `entities/`, `sources/`) say nothing about the topic, so they are ignored. A wiki sorted into topic folders gets one planet per folder, up to 16, one for each civilisation. Without them, the clustering settles on at most 9.
 4. Pages that name their planet themselves, with `planet:` or through `assign` in the config, then move there, and the rest stays where the clustering put it. The name can be a planet's generated name or the one you renamed it to. A name no planet has yet founds a new one.
 
 The clustering compares words, not meaning: two pages about the same thing in different vocabulary may land on different planets. That is what step 4 is for.
@@ -195,7 +202,11 @@ Save this as `wikitary.config.json` next to your wiki, or inside the wiki folder
 
 ## Performance
 
-Wikitary needs WebGL 2 and is built for a dedicated GPU. It picks a quality level from your hardware, lowers its resolution if the frame rate drops, and holds worlds to a fixed vertex budget however large the wiki is. You can also choose a level with `?q=low`, `?q=medium` or `?q=high`.
+Wikitary needs WebGL 2 and runs best on a dedicated GPU. It picks a quality level from your graphics card, and integrated graphics start one level lower. Worlds are held to a fixed vertex budget however large the wiki is.
+
+When the frame rate drops, the effects you would miss least go first: the glow is computed at a lower resolution, then multisampling and far-off cities are dropped, then cast shadows. Resolution is reduced last, and a light sharpening pass keeps the lower resolution from looking soft. Whatever headroom comes back is given back to the picture.
+
+You can choose a level in the help panel (<kbd>?</kbd>) under Graphics, or with `?q=low`, `?q=medium` or `?q=high` in the address.
 
 A 1,500-page test wiki builds in about 20 seconds. Very large wikis get fewer neighbourhood buildings per page, and past the budget a page becomes a plain block, but every page stays on the map. A page shows 8 to 20 of its headings as buildings (5 on very large wikis), main headings first, and all of them in the reader and in search.
 

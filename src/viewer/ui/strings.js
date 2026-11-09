@@ -88,6 +88,9 @@ export const STRINGS = {
       ['Asteroids', 'Orphan pages that nothing links to'],
       ['Comet', 'The wiki’s log'],
     ],
+    graphicsTitle: 'Graphics',
+    graphicsLevels: { auto: 'Automatic', high: 'High', medium: 'Medium', low: 'Low' },
+    graphicsNote: (now) => `Now running on “${now}”. Changing it reloads the worlds. On every level, effects are eased off while frames run slow; sharpness goes last.`,
     keysTitle: 'Controls',
     keys: [
       ['Drag', 'Move across the surface, or orbit the system'],
@@ -304,6 +307,9 @@ export const STRINGS = {
       ['Asteroiden', 'Verwaiste Seiten, auf die nichts verweist'],
       ['Komet', 'Das Protokoll des Wikis'],
     ],
+    graphicsTitle: 'Grafik',
+    graphicsLevels: { auto: 'Automatisch', high: 'Hoch', medium: 'Mittel', low: 'Niedrig' },
+    graphicsNote: (now) => `Läuft gerade auf „${now}“. Eine Änderung lädt die Welten neu. Auf jeder Stufe werden Effekte zurückgefahren, wenn es ruckelt; die Bildschärfe zuletzt.`,
     keysTitle: 'Steuerung',
     keys: [
       ['Ziehen', 'Über die Oberfläche bewegen oder um das System kreisen'],

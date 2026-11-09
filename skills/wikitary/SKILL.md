@@ -37,7 +37,7 @@ Automatic clusters are often good but their names are guesses. You have read the
 
 3. Run `inspect` again to confirm the result.
 
-Civilisations: `terra` (humans), `vektor` (machines), `ignis` (forges), `prisma` (crystal), `myzel` (fungal), `auris` (desert), `thalassa` (ocean), `kronos` (clockwork), `sylva` (forest). Match them to the character of a topic where you can.
+Civilisations: `terra` (humans), `vektor` (machines), `ignis` (forges), `prisma` (crystal), `myzel` (fungal), `auris` (desert), `thalassa` (ocean), `kronos` (clockwork), `sylva` (forest), `nimbus` (cloud sea; communication, media), `selene` (moon; space, research), `lanterna` (dusk; arts, literature), `apis` (hive; projects, teams, food), `lithos` (ruins; myth, religion, antiquity), `fulmen` (storm; politics, conflict, security), `palus` (swamp; chemistry, recipes, experiments). Match them to the character of a topic where you can.
 
 Expeditions are guided tours readers can take through the wiki. Wikitary offers some on its own, but a good one needs someone who has read the pages, so add them when you know a sensible reading order:
 

@@ -193,6 +193,40 @@ test('requested planet count is respected', async () => {
   assert.equal(g.clusters.length, 2);
 });
 
+test('every topic folder becomes a world, beyond nine and up to the number of civilisations', async () => {
+  const TOPICS = ['astronomy', 'baking', 'chess', 'dance', 'economics', 'forestry', 'geology', 'harbours', 'insects', 'jazz', 'knitting', 'law',
+    'mining', 'nursing', 'opera', 'poetry', 'quilting', 'rowing', 'sailing', 'tennis'];
+  const wikiOf = (topics) => {
+    const files = {};
+    topics.forEach((t, k) => {
+      const size = 2 + (k % 4);
+      for (let i = 0; i < size; i++) {
+        const others = Array.from({ length: size }, (_, j) => j).filter((j) => j !== i).map((j) => `[[${t}-${j}]]`).join(' ');
+        // One link to the next topic, as real wikis cross-reference.
+        const across = i === 0 ? ` See also [[${topics[(k + 1) % topics.length]}-0]].` : '';
+        files[`${t}/${t}-${i}.md`] = `# ${t} ${i}\n\nNotes about ${t}, part ${i} of the ${t} folder. ${others}${across}\n`;
+      }
+    });
+    return files;
+  };
+  const twelve = await tempWiki(wikiOf(TOPICS.slice(0, 12)));
+  const twenty = await tempWiki(wikiOf(TOPICS));
+  try {
+    const g = await buildGraph({ cwd: twelve, config: {} });
+    assert.equal(g.clusters.length, 12);
+    for (const c of g.clusters) {
+      const folders = new Set(c.pageIds.map((id) => g.pages[id].path.split('/')[0]));
+      assert.equal(folders.size, 1, `${c.name} mixes folders: ${[...folders].join(', ')}`);
+    }
+    assert.equal(new Set(g.clusters.map((c) => c.civ)).size, 12);
+    const many = await buildGraph({ cwd: twenty, config: {} });
+    assert.equal(many.clusters.length, 16);
+    assert.equal(new Set(many.clusters.map((c) => c.civ)).size, 16);
+  } finally {
+    await Promise.all([twelve, twenty].map((d) => rm(d, { recursive: true })));
+  }
+});
+
 test('a wiki opened from elsewhere brings its own config; otherwise the one in the current folder applies', async () => {
   const dir = await tempWiki({
     'wikitary.config.json': '{"title": "Outer"}',
@@ -274,4 +308,34 @@ test('a wiki folder named "wiki" takes its parent\'s name, but never the name of
   assert.equal(prettifyRoot(path.join(home, 'projects', 'bread-notes', 'wiki'), home), 'bread notes');
   assert.equal(prettifyRoot(path.join(home, 'wiki'), home), 'wiki');
   assert.equal(prettifyRoot(path.join(home, 'my_vault'), home), 'my vault');
+});
+
+test('integrated and software graphics start on a lighter quality level', async () => {
+  const { pickQuality } = await import('../src/viewer/engine/quality.js');
+  assert.equal(pickQuality({ gpu: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)' }), 'high');
+  assert.equal(pickQuality({ gpu: 'ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 vs_5_0 ps_5_0, D3D11)' }), 'high');
+  assert.equal(pickQuality({ gpu: 'ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)' }), 'high');
+  assert.equal(pickQuality({ gpu: 'ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)' }), 'medium');
+  assert.equal(pickQuality({ gpu: 'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)' }), 'medium');
+  assert.equal(pickQuality({ gpu: 'ANGLE (AMD, AMD Radeon(TM) Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)' }), 'medium');
+  assert.equal(pickQuality({ gpu: 'ANGLE (Intel, Intel(R) UHD Graphics 600 Direct3D11 vs_5_0 ps_5_0, D3D11)', cores: 4 }), 'low');
+  assert.equal(pickQuality({ gpu: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)' }), 'low');
+  assert.equal(pickQuality({ gpu: 'Apple GPU', mobile: true }), 'low');
+  assert.equal(pickQuality({ gpu: '' }), 'high');
+});
+
+test('every civilisation the clustering can assign exists in the viewer, complete and in both languages', async () => {
+  const { CIV_IDS } = await import('../src/core/pipeline.mjs');
+  const { CIVS } = await import('../src/viewer/civs/index.js');
+  const { MAX_PLANETS } = await import('../src/core/cluster.mjs');
+  assert.deepEqual(Object.keys(CIVS).sort(), [...CIV_IDS].sort());
+  assert.ok(CIV_IDS.length >= MAX_PLANETS);
+  for (const id of CIV_IDS) {
+    const civ = CIVS[id];
+    assert.equal(civ.id, id);
+    for (const key of ['name', 'people', 'blurb', 'bridge']) assert.ok(civ[key]?.en && civ[key]?.de, `${id}.${key}`);
+    for (const key of ['landmark', 'section', 'filler', 'plaza', 'scatter', 'ship']) assert.equal(typeof civ[key], 'function', `${id}.${key}`);
+    for (const key of ['terrain', 'atmosphere', 'palette', 'env', 'map', 'road', 'walker', 'flyer']) assert.ok(civ[key], `${id}.${key}`);
+    assert.equal(typeof civ.surfaceGLSL, 'string', `${id}.surfaceGLSL`);
+  }
 });

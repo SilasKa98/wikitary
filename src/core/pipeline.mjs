@@ -12,18 +12,26 @@ import { clusterPages } from './cluster.mjs';
 const STAR_NAMES = ['index', '_index', 'home', 'readme', 'overview', 'moc', '00-index', 'start', 'startseite', 'übersicht', 'uebersicht', 'map-of-content'];
 const COMET_NAMES = ['log', 'changelog', 'journal', 'protokoll', 'history', 'chronik', 'activity'];
 
-export const CIV_IDS = ['terra', 'vektor', 'ignis', 'prisma', 'myzel', 'auris', 'thalassa', 'kronos', 'sylva'];
+export const CIV_IDS = ['terra', 'vektor', 'ignis', 'prisma', 'myzel', 'auris', 'thalassa', 'kronos', 'sylva',
+  'nimbus', 'selene', 'lanterna', 'apis', 'lithos', 'fulmen', 'palus'];
 
 // A gentle thematic nudge when picking which civilisation inhabits a cluster.
 const CIV_AFFINITY = {
   vektor: /\b(software|code|program|computer|data|daten|algorithm|network|netzwerk|digital|internet|robot|ai|ki|llm|electronic|elektron)/i,
-  kronos: /\b(process|prozess|method|methode|workflow|mechani|craft|handwerk|clock|uhr|time|zeit|rule|regel|law|recht)/i,
-  prisma: /\b(math|physi|chemi|theor|logic|logik|concept|konzept|abstract|abstrakt|philosoph|crystal|kristall|light|licht)/i,
+  kronos: /\b(knit|strick|sew|näh|textil|tool|werkzeug|engineer|ingenieur|process|prozess|method|methode|workflow|mechani|craft|handwerk|clock|uhr|time|zeit|rule|regel|law|recht)/i,
+  prisma: /\b(math|physi|theor|logic|logik|concept|konzept|abstract|abstrakt|philosoph|crystal|kristall|light|licht)/i,
   ignis: /\b(energy|energie|industr|fire|feuer|metal|metall|forge|schmied|factory|fabrik|mining|bergbau|volcan|vulkan)/i,
-  myzel: /\b(bio|health|medizin|medicine|gene|cell|zelle|organism|ecolog|ökolog|neuro|brain|gehirn|fung|pilz)/i,
+  myzel: /\b(nurs|pflege|medic|anatom|disease|krankheit|bio|health|medizin|medicine|gene|cell|zelle|organism|ecolog|ökolog|neuro|brain|gehirn|fung|pilz)/i,
   sylva: /\b(history|geschichte|people|kultur|culture|society|gesellschaft|nature|natur|education|bildung|forest|wald|plant|pflanze|garden|garten)/i,
-  thalassa: /\b(ocean|ozean|meer|sea|water|wasser|river|fluss|climate|klima|travel|reise|trade|handel|ship|schiff)/i,
-  auris: /\b(economy|wirtschaft|finance|finanz|market|markt|business|money|geld|desert|wüste|sun|sonne)/i,
+  thalassa: /\b(harbo|hafen|port\b|sail|segel|fish|fisch|boat|boot|ocean|ozean|meer|sea|water|wasser|river|fluss|climate|klima|travel|reise|trade|handel|ship|schiff)/i,
+  auris: /\b(econom|wirtschaft|finance|finanz|market|markt|business|money|geld|desert|wüste|sun|sonne)/i,
+  nimbus: /\b(communicat|kommunikat|media|medien|news|nachricht|social|sozial|weather|wetter|wind|sky|himmel|idea|idee)/i,
+  selene: /\b(space|weltraum|astronom|star|stern|research|forschung|science|wissenschaft|satellit|rocket|rakete|moon|mond|univers|kosm|cosm)/i,
+  lanterna: /\b(jazz|song|lied|opera|oper\b|dance|tanz|orchest|art\b|arts|kunst|music|musik|literat|poem|poet|gedicht|lyrik|film|kino|design|story|stories|erzähl|theat|paint|gemälde|novel)/i,
+  apis: /\b(insect|insekt|project|projekt|team|organi|manage|logisti|food|essen|ernähr|nutrition|agricult|landwirt|farm|bee|biene|cooperat|kooperat)/i,
+  lithos: /\b(geolog|stone|stein|rock|fels|myth|religio|glaube|faith|archaeolog|archäolog|ancient|antik|legend|sage|ruin|temple|tempel|empire|imperium|greek|griech)/i,
+  fulmen: /\b(politic|politik|war\b|wars|krieg|militar|militär|security|sicherheit|conflict|konflikt|strateg|power|macht|govern|regier|staat|defen|verteid)/i,
+  palus: /\b(ferment|brew|brau|chemi|pharma|drug|medikament|recipe|rezept|cook|koch|potion|trank|experiment|labor|swamp|sumpf|moor)/i,
 };
 
 /**
@@ -152,14 +160,34 @@ function assignCivs(clusters, overrides) {
   // The largest cluster is home: humanity's Earth.
   const firstOpen = result.indexOf(null);
   if (firstOpen >= 0 && free.has('terra')) { result[firstOpen] = 'terra'; free.delete('terra'); }
+  // The planet's name says most about it, its first keywords more than its last, which are
+  // often just the names of pages it links to elsewhere.
+  const affinity = (civ, c) => {
+    const re = CIV_AFFINITY[civ];
+    if (!re) return 0;
+    return (re.test(c.name) ? 3 : 0) + c.keywords.reduce((s, k, i) => s + (re.test(k) ? 1 / (1 + i * 0.5) : 0), 0);
+  };
+  // Strongest matches first across all worlds, so a world without any theme doesn't take
+  // the civilisation that a later world fits.
+  const pairs = [];
   clusters.forEach((c, i) => {
     if (result[i]) return;
-    const hay = `${c.name} ${c.keywords.join(' ')}`;
-    let best = null;
-    for (const civ of free) if (CIV_AFFINITY[civ] && CIV_AFFINITY[civ].test(hay)) { best = civ; break; }
-    if (!best) best = free.values().next().value || CIV_IDS[1 + (i % (CIV_IDS.length - 1))];
-    result[i] = best;
-    free.delete(best);
+    for (const civ of free) {
+      const score = affinity(civ, c);
+      if (score > 0) pairs.push({ i, civ, score });
+    }
+  });
+  pairs.sort((a, b) => b.score - a.score || a.i - b.i || CIV_IDS.indexOf(a.civ) - CIV_IDS.indexOf(b.civ));
+  for (const { i, civ } of pairs) {
+    if (result[i] || !free.has(civ)) continue;
+    result[i] = civ;
+    free.delete(civ);
+  }
+  clusters.forEach((c, i) => {
+    if (result[i]) return;
+    const next = free.values().next().value || CIV_IDS[1 + (i % (CIV_IDS.length - 1))];
+    result[i] = next;
+    free.delete(next);
   });
   return result;
 }
