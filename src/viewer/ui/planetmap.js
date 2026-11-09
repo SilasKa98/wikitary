@@ -428,6 +428,7 @@ export class PlanetMap {
           this.list)));
     this.root = el('div', { class: 'pmap', onclick: (e) => { if (e.target === this.root) this.close(); } }, this.sheet);
     this.ui.root.append(this.root);
+    window.addEventListener('resize', () => { if (this.openState) this.fitTabs(); });
     this.ctx = this.canvas.getContext('2d');
     this.staticCtx = this.staticLayer.getContext('2d');
     this.bindCanvas();
@@ -607,6 +608,19 @@ export class PlanetMap {
       tab.classList.toggle('on', on);
       if (on) tab.setAttribute('aria-current', 'true');
       else tab.removeAttribute('aria-current');
+    }
+    this.fitTabs();
+  }
+
+  /** With many worlds the tabs shrink to their globes, and only the current one keeps its name. */
+  fitTabs() {
+    const tabs = this.tabs;
+    tabs.classList.remove('compact');
+    tabs.classList.toggle('compact', tabs.scrollWidth > tabs.clientWidth + 1);
+    const on = tabs.querySelector('.pmap-tab.on');
+    if (on) {
+      const left = on.getBoundingClientRect().left - tabs.getBoundingClientRect().left + tabs.scrollLeft;
+      if (left < tabs.scrollLeft || left + on.offsetWidth > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = left - (tabs.clientWidth - on.offsetWidth) / 2;
     }
   }
 
