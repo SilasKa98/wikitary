@@ -1,0 +1,52 @@
+{
+  "name": "wikitary",
+  "version": "0.1.0",
+  "description": "Explore any LLM wiki as a living solar system: topic clusters become planets, every Markdown page a building, every link a road full of traffic.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Silas K.",
+  "homepage": "https://github.com/SilasKa98/wikitary#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SilasKa98/wikitary.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SilasKa98/wikitary/issues"
+  },
+  "keywords": [
+    "llm-wiki",
+    "knowledge-graph",
+    "visualization",
+    "threejs",
+    "markdown",
+    "obsidian",
+    "second-brain"
+  ],
+  "bin": {
+    "wikitary": "bin/wikitary.mjs"
+  },
+  "files": [
+    "bin",
+    "src/core",
+    "dist/viewer",
+    "skills",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/build-viewer.mjs",
+    "dev": "node scripts/build-viewer.mjs --watch",
+    "demo": "cd examples/demo-wiki && node ../../bin/wikitary.mjs",
+    "test": "node --test test/"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.0.0",
+    "@fontsource-variable/space-grotesk": "^5.0.0",
+    "@fontsource/ibm-plex-mono": "^5.0.0",
+    "esbuild": "^0.28.2",
+    "marked": "^18.1.3",
+    "three": "^0.187.0"
+  }
+}

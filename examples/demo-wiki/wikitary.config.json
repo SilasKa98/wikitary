@@ -1,0 +1,16 @@
+{
+  "title": "The Bread Wiki",
+  "expeditions": [
+    {
+      "title": "From flour to crust",
+      "description": "Follow one loaf from the first mix to the oven",
+      "stops": [
+        { "page": "autolyse", "note": "It starts before anyone kneads anything: flour and water, left alone." },
+        { "page": "gluten", "note": "What that rest was building. Everything after this leans on it." },
+        { "page": "fermentation", "note": "The heart of bread, and the biggest city in this wiki." },
+        { "page": "proofing", "note": "The last rise, judged by feel." },
+        { "page": "maillard-reaction", "note": "Why crust tastes like crust." }
+      ]
+    }
+  ]
+}
